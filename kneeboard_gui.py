@@ -14,15 +14,15 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.scrollview import ScrollView
-from kivy.graphics import Color, Line
+from kivy.graphics import Color, Line, Rectangle
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
-from kivy.properties import ListProperty
+from kivy.properties import ListProperty, ObjectProperty, BooleanProperty
 from kivy.clock import Clock
 from functools import partial
 
-# Set window size for development (can be adjusted for the actual device)
-Window.size = (800, 480)  # Common resolution for 7" touchscreens
+# Set window size for the target display
+Window.size = (600,1024)  # Resolution of the target display
 
 class SquawkCodeInput(BoxLayout):
     """Widget for entering a 4-digit squawk code using a pinpad."""
@@ -122,7 +122,7 @@ class DrawingCanvas(Widget):
             self.current_line = []
             self.current_line.extend([touch.x, touch.y])
             with self.canvas:
-                Color(0, 0, 0)  # Black color for drawing
+                Color(1, 1, 1)  # White color for drawing
                 self.line = Line(points=[touch.x, touch.y, touch.x + 1, touch.y + 1], width=2)
             return True
         return super(DrawingCanvas, self).on_touch_down(touch)
@@ -176,6 +176,286 @@ class NotepadTab(BoxLayout):
         self.drawing_canvas.clear_canvas()
 
 
+class ChecklistButton(Button):
+    """Button representing a checklist section that can be toggled."""
+    
+    is_selected = BooleanProperty(False)
+    
+    def __init__(self, **kwargs):
+        super(ChecklistButton, self).__init__(**kwargs)
+        self.size_hint_y = None
+        self.height = 35  # Smaller height
+        self.font_size = 14  # Smaller font
+        self.background_normal = ''
+        self.background_color = (0.5, 0.5, 0.5, 1)
+        self.bind(is_selected=self.update_appearance)
+    
+    def update_appearance(self, instance, value):
+        """Update the button appearance based on selection state."""
+        if value:  # Selected
+            self.background_color = (0.3, 0.6, 0.9, 1)
+        else:  # Not selected
+            self.background_color = (0.5, 0.5, 0.5, 1)
+
+
+class ChecklistContent(ScrollView):
+    """Container for displaying the items of a specific checklist."""
+    
+    def __init__(self, title, items, **kwargs):
+        super(ChecklistContent, self).__init__(**kwargs)
+        self.size_hint_y = None
+        self.height = 0  # Initially hidden
+        
+        # Main layout for the content
+        self.layout = BoxLayout(orientation='vertical', spacing=2, padding=5, size_hint_y=None)
+        self.layout.bind(minimum_height=self.layout.setter('height'))
+        
+        # Add the checklist items
+        self.add_items(title, items)
+        
+        self.add_widget(self.layout)
+    
+    def add_items(self, title, items):
+        """Add checklist items to the content area."""
+        # Title
+        title_label = Label(
+            text=title,
+            font_size=18,
+            bold=True,
+            halign='left',
+            size_hint_y=None,
+            height=30,
+            text_size=(Window.width - 20, None)  # Use full width minus padding
+        )
+        self.layout.add_widget(title_label)
+        
+        # Items
+        for item in items:
+            item_label = Label(
+                text=item,
+                font_size=16,
+                halign='left',
+                valign='top',
+                size_hint_y=None,
+                text_size=(Window.width - 20, None)  # Use full width minus padding
+            )
+            item_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
+            self.layout.add_widget(item_label)
+    
+    def show(self):
+        """Show the content."""
+        self.height = 500  # Increased height to show more content
+    
+    def hide(self):
+        """Hide the content."""
+        self.height = 0
+
+
+class ChecklistTab(BoxLayout):
+    """Tab for displaying all checklists with button-based navigation."""
+    
+    def __init__(self, **kwargs):
+        super(ChecklistTab, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.spacing = 10
+        self.padding = 10
+        
+        # Create the button layout for vertical orientation
+        self.button_layout = GridLayout(cols=2, spacing=5, size_hint=(1, None), height=160)
+        
+        # Create the content area
+        self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
+        
+        # Add to the main layout
+        self.add_widget(self.button_layout)
+        self.add_widget(self.content_area)
+        
+        # Track the currently selected button and content
+        self.current_button = None
+        self.current_content = None
+        
+        # Add the checklist sections
+        self.add_checklist_sections()
+    
+    def add_checklist_sections(self):
+        """Add all checklist sections with their buttons and content."""
+        # Define the checklist sections
+        sections = [
+            ("Preflight", self.get_preflight_items()),
+            ("Engine Start", self.get_engine_start_items()),
+            ("Ground Ops", self.get_ground_ops_items()),
+            ("Takeoff", self.get_takeoff_items()),
+            ("Cruise", self.get_cruise_items()),
+            ("Landing", self.get_landing_items()),
+            ("Securing", self.get_securing_items()),
+            ("V-Speeds", self.get_vspeeds_items())
+        ]
+        
+        # Create buttons and content for each section
+        for title, items in sections:
+            # Create the button
+            button = ChecklistButton(text=title)
+            button.bind(on_press=lambda btn=button, t=title, i=items: self.on_section_selected(btn, t, i))
+            self.button_layout.add_widget(button)
+            
+        # Select the first section by default
+        if sections:
+            first_button = self.button_layout.children[-1]  # Last added is first in the list due to Kivy's ordering
+            self.on_section_selected(first_button, sections[0][0], sections[0][1])
+    
+    def on_section_selected(self, button, title, items):
+        """Handle selection of a checklist section."""
+        # Deselect the current button if there is one
+        if self.current_button:
+            self.current_button.is_selected = False
+        
+        # Select the new button
+        button.is_selected = True
+        self.current_button = button
+        
+        # Remove the current content if there is any
+        if self.current_content:
+            self.content_area.remove_widget(self.current_content)
+        
+        # Create and add the new content
+        self.current_content = ChecklistContent(title, items)
+        self.current_content.show()
+        self.content_area.add_widget(self.current_content)
+    
+    def get_preflight_items(self):
+        """Get the preflight checklist items."""
+        return [
+            "FUEL/OIL",
+            "1. FUEL TANKS - CHECK/SECURE",
+            "2. FUEL SUMPS - DRAIN",
+            "3. ENGINE OIL - CHECK/SECURE/MIN. 4 QTS",
+            "",
+            "CABIN",
+            "1. PAPERWORK - ARROW",
+            "2. FIRE EXTINGUISHER - CHECK/SECURE",
+            "3. PITOT/STATIC SYSTEM - DRAIN",
+            "4. ALTERNATE STATIC SOURCE - OFF/FWD",
+            "5. MAGNETOS AND ALL SWITCHES - OFF",
+            "6. STABILATOR/RUDDER TRIM - NEUTRAL",
+            "7. TACH/HOBBS - CONFIRM/RECORD",
+            "8. BATTERY MASTER SWITCH - ON",
+            "9. EXTERIOR LIGHTING SWITCHES - ON",
+            "10. PITOT HEAT SWITCH - ON",
+            "11. FUEL GAUGES - QUANTITY CHECK",
+            "12. EXTERIOR LIGHTS - CHECK",
+            "13. PITOT HEAT - CHECK",
+            "14. STALL WARNING HORN - CHECK",
+            "15. EXTERIOR LIGHTING SWITCHES - OFF",
+            "16. PITOT HEAT SWITCH - OFF",
+            "17. BATTERY MASTER SWITCH - OFF",
+            "18. FLAPS - EXTEND (40º)"
+        ]
+    
+    def get_engine_start_items(self):
+        """Get the engine start checklist items."""
+        return [
+            "BEFORE STARTING ENGINE",
+            "1. AIRCRAFT - DISPATCH IN FLIGHT CIRCLE",
+            "2. PAX BRIEFING - S.A.F.E.",
+            "3. BELTS/BRAKE/SEATS - LOCKED/FASTENED",
+            "4. FUEL SELECTOR - DESIRED TANK",
+            "5. OVERHEAD SWITCHES - OFF",
+            "6. EMERGENCY BATTERY - ARM",
+            "7. E VOLTS - > 23.3 VOLTS",
+            "*IF < 23.3 VOLTS, CHECK AGAIN AFTER RUN UP*",
+            "8. ANNUNCIATORS - CHECK",
+            "9. BATTERY MASTER - ON",
+            "10. ALTERNATOR SWITCH - ON",
+            "11. FIN STROBE - ON/DOWN",
+            "12. CIRCUIT BREAKERS - CHECK",
+            "13. ALT-AIR - CLOSED",
+            "14. L/R MAGNETO SWITCHES - ON"
+        ]
+    
+    def get_ground_ops_items(self):
+        """Get the ground operations checklist items."""
+        return [
+            "RUN UP CHECK",
+            "1. NAV/COM - SET",
+            "2. CIRCUIT BREAKERS - CHECK",
+            "3. ALTIMETERS - SET",
+            "4. FLIGHT INSTRUMENTS - CHECK",
+            "5. FLIGHT CONTROLS - FREE AND CORRECT",
+            "6. AUTOPILOT - CHECK",
+            "7. STABILATOR/RUDDER TRIM - SET",
+            "8. FUEL PUMP - ON",
+            "9. FUEL SELECTOR - SWITCH TANKS",
+            "10. MIXTURE - RICH",
+            "11. THROTTLE - 2000 RPM"
+        ]
+    
+    def get_takeoff_items(self):
+        """Get the takeoff checklist items."""
+        return [
+            "NORMAL TAKEOFF",
+            "1. FLAPS - 0º",
+            "2. THROTTLE - FULL",
+            "3. ENGINE INSTRUMENTS - CHECK",
+            "4. ROTATE - 60 KIAS",
+            "5. CLIMB - 76 KIAS"
+        ]
+    
+    def get_cruise_items(self):
+        """Get the cruise checklist items."""
+        return [
+            "CRUISE",
+            "1. POWER - SET PER TABLE",
+            "2. MIXTURE - LEAN AS REQUIRED",
+            "3. FUEL SELECTOR - ALTERNATE PER SCHEDULE"
+        ]
+    
+    def get_landing_items(self):
+        """Get the landing checklist items."""
+        return [
+            "APPROACH",
+            "1. SEATS/SEAT BELTS - SET/FASTENED",
+            "2. LIGHTS - SET AS REQUIRED",
+            "3. FUEL PUMP - ON",
+            "4. FUEL SELECTOR - FULLEST TANK",
+            "5. MIXTURE - SET AS REQUIRED",
+            "6. AIR CONDITIONER - OFF"
+        ]
+    
+    def get_securing_items(self):
+        """Get the securing checklist items."""
+        return [
+            "SECURING",
+            "1. SQUAWK - 1200",
+            "2. LIGHTS/DIM SWITCHES - OFF",
+            "3. AVIONICS MASTER - OFF",
+            "4. EMERGENCY BATTERY - OFF",
+            "5. AIR CONDITIONER - OFF",
+            "6. ELECTRICAL SWITCHES - OFF",
+            "7. THROTTLE - IDLE",
+            "8. MIXTURE - CUT-OFF",
+            "9. L/R MAGNETO SWITCHES - OFF"
+        ]
+    
+    def get_vspeeds_items(self):
+        """Get the V-speeds checklist items."""
+        return [
+            "V-SPEEDS @ MAX GROSS WEIGHT",
+            "Vso - 45 KIAS",
+            "Vs - 50 KIAS",
+            "Vr - 60 KIAS",
+            "Vx - 64 KIAS",
+            "Vy - 76 KIAS",
+            "Vg - 76 KIAS",
+            "Vfe - 102 KIAS",
+            "Vno - 125 KIAS",
+            "Vne - 154 KIAS",
+            "Vo (2550 lbs.) - 113 KIAS",
+            "Vo (1917 lbs.) - 98 KIAS",
+            "",
+            "MAX DEMONSTRATED CROSSWIND - 17 KTS"
+        ]
+
+
 class PiperArcherReference(ScrollView):
     """Reference information for the Piper Archer aircraft."""
     
@@ -183,7 +463,7 @@ class PiperArcherReference(ScrollView):
         super(PiperArcherReference, self).__init__(**kwargs)
         
         # Main layout for the reference content
-        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10, size_hint_y=None)
+        self.layout = BoxLayout(orientation='vertical', spacing=5, padding=5, size_hint_y=None)
         self.layout.bind(minimum_height=self.layout.setter('height'))
         
         # Add reference sections
@@ -264,7 +544,7 @@ class PiperArcherReference(ScrollView):
             halign='left',
             size_hint_y=None,
             height=40,
-            text_size=(self.width, None)
+            text_size=(Window.width - 20, None)  # Use full width minus padding
         )
         self.layout.add_widget(title_label)
         
@@ -276,7 +556,7 @@ class PiperArcherReference(ScrollView):
             halign='left',
             valign='top',
             size_hint_y=None,
-            text_size=(self.width, None)
+            text_size=(Window.width - 20, None)  # Use full width minus padding
         )
         content_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
         self.layout.add_widget(content_label)
@@ -290,8 +570,8 @@ class KneeboardApp(App):
         # Main layout
         self.main_layout = BoxLayout(orientation='vertical')
         
-        # Header with title
-        self.header = BoxLayout(size_hint=(1, 0.1), padding=10)
+        # Header with title (smaller)
+        self.header = BoxLayout(size_hint=(1, 0.06), padding=5)
         self.title_label = Label(
             text="Pilot Kneeboard",
             font_size=24,
@@ -311,14 +591,8 @@ class KneeboardApp(App):
         
         self.main_layout.add_widget(self.header)
         
-        # Tabbed panel for different sections
-        self.tabs = TabbedPanel(do_default_tab=False, size_hint=(1, 0.9))
-        
-        # Squawk code tab
-        self.squawk_tab = TabbedPanelItem(text="Squawk")
-        self.squawk_input = SquawkCodeInput()
-        self.squawk_tab.add_widget(self.squawk_input)
-        self.tabs.add_widget(self.squawk_tab)
+        # Tabbed panel for different sections (with smaller tab height)
+        self.tabs = TabbedPanel(do_default_tab=False, size_hint=(1, 0.94), tab_height=40)
         
         # Reference tab
         self.reference_tab = TabbedPanelItem(text="Reference")
@@ -332,8 +606,14 @@ class KneeboardApp(App):
         self.notepad_tab.add_widget(self.notepad)
         self.tabs.add_widget(self.notepad_tab)
         
+        # Checklist tab
+        self.checklist_tab = TabbedPanelItem(text="Checklists")
+        self.checklist_content = ChecklistTab()
+        self.checklist_tab.add_widget(self.checklist_content)
+        self.tabs.add_widget(self.checklist_tab)
+        
         # Set default tab
-        self.tabs.default_tab = self.squawk_tab
+        self.tabs.default_tab = self.notepad_tab
         
         self.main_layout.add_widget(self.tabs)
         
