@@ -21,8 +21,11 @@ from kivy.properties import ListProperty, ObjectProperty, BooleanProperty
 from kivy.clock import Clock
 from functools import partial
 
-# Set window size for the target display
-Window.size = (600,1024)  # Resolution of the target display
+# Set window properties for the Raspberry Pi
+from kivy.config import Config
+Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
+Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
+# Window size will be determined by the display when in fullscreen mode
 
 class SquawkCodeInput(BoxLayout):
     """Widget for entering a 4-digit squawk code using a pinpad."""
@@ -184,8 +187,8 @@ class ChecklistButton(Button):
     def __init__(self, **kwargs):
         super(ChecklistButton, self).__init__(**kwargs)
         self.size_hint_y = None
-        self.height = 35  # Smaller height
-        self.font_size = 14  # Smaller font
+        self.height = 45  # Increased height for better visibility
+        self.font_size = 16  # Increased font size for better visibility
         self.background_normal = ''
         self.background_color = (0.5, 0.5, 0.5, 1)
         self.bind(is_selected=self.update_appearance)
@@ -193,7 +196,7 @@ class ChecklistButton(Button):
     def update_appearance(self, instance, value):
         """Update the button appearance based on selection state."""
         if value:  # Selected
-            self.background_color = (0.3, 0.6, 0.9, 1)
+            self.background_color = (0.2, 0.5, 1.0, 1)  # Brighter blue for better contrast
         else:  # Not selected
             self.background_color = (0.5, 0.5, 0.5, 1)
 
@@ -260,8 +263,8 @@ class ChecklistTab(BoxLayout):
         self.spacing = 10
         self.padding = 10
         
-        # Create the button layout for vertical orientation
-        self.button_layout = GridLayout(cols=2, spacing=5, size_hint=(1, None), height=160)
+        # Create the button layout for vertical orientation with larger buttons
+        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=200)
         
         # Create the content area
         self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
@@ -591,23 +594,44 @@ class KneeboardApp(App):
         
         self.main_layout.add_widget(self.header)
         
-        # Tabbed panel for different sections (with smaller tab height)
-        self.tabs = TabbedPanel(do_default_tab=False, size_hint=(1, 0.94), tab_height=40)
+        # Tabbed panel for different sections with improved visibility for Raspberry Pi
+        self.tabs = TabbedPanel(
+            do_default_tab=False, 
+            size_hint=(1, 0.94), 
+            tab_height=50,  # Increased tab height for better touch targets
+            tab_width=150   # Fixed tab width for better visibility
+        )
+        
+        # Custom style for tab items
+        tab_style = {
+            'font_size': 18,
+            'background_color': (0.3, 0.3, 0.3, 1),
+            'color': (1, 1, 1, 1)
+        }
         
         # Reference tab
         self.reference_tab = TabbedPanelItem(text="Reference")
+        self.reference_tab.font_size = tab_style['font_size']
+        self.reference_tab.background_color = tab_style['background_color']
+        self.reference_tab.color = tab_style['color']
         self.reference_content = PiperArcherReference()
         self.reference_tab.add_widget(self.reference_content)
         self.tabs.add_widget(self.reference_tab)
         
         # Notepad tab
         self.notepad_tab = TabbedPanelItem(text="Notepad")
+        self.notepad_tab.font_size = tab_style['font_size']
+        self.notepad_tab.background_color = tab_style['background_color']
+        self.notepad_tab.color = tab_style['color']
         self.notepad = NotepadTab()
         self.notepad_tab.add_widget(self.notepad)
         self.tabs.add_widget(self.notepad_tab)
         
         # Checklist tab
         self.checklist_tab = TabbedPanelItem(text="Checklists")
+        self.checklist_tab.font_size = tab_style['font_size']
+        self.checklist_tab.background_color = tab_style['background_color']
+        self.checklist_tab.color = tab_style['color']
         self.checklist_content = ChecklistTab()
         self.checklist_tab.add_widget(self.checklist_content)
         self.tabs.add_widget(self.checklist_tab)
