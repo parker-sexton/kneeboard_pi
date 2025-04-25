@@ -38,7 +38,7 @@ TMP_SERVICE_FILE=$(mktemp)
 cat "$CURRENT_DIR/kneeboard.service" > "$TMP_SERVICE_FILE"
 
 # Update the paths in the service file
-sed -i "s|ExecStart=.*|ExecStart=/bin/bash -c 'HEADLESS=1 KIVY_WINDOW=egl_rpi KIVY_GL_BACKEND=gl /usr/bin/python3 $CURRENT_DIR/kneeboard_gui.py'|" "$TMP_SERVICE_FILE"
+sed -i "s|ExecStart=.*|ExecStart=/bin/bash -c 'HEADLESS=1 DISPLAY=:0 /usr/bin/xvfb-run -a /usr/bin/python3 $CURRENT_DIR/kneeboard_gui.py'|" "$TMP_SERVICE_FILE"
 sed -i "s|WorkingDirectory=.*|WorkingDirectory=$CURRENT_DIR|" "$TMP_SERVICE_FILE"
 sed -i "s|User=.*|User=$CURRENT_USER|" "$TMP_SERVICE_FILE"
 

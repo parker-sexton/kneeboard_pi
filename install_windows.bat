@@ -18,13 +18,23 @@ if %errorlevel% neq 0 (
 echo Python is installed. Installing dependencies...
 echo.
 
-REM Install Kivy using pip
+REM Check if tkinter is available
+python -c "import tkinter" > nul 2>&1
+if %errorlevel% neq 0 (
+    echo WARNING: tkinter may not be installed with your Python.
+    echo The application requires tkinter, which usually comes with Python.
+    echo If you encounter errors, please reinstall Python and select the tcl/tk option.
+    echo.
+    pause
+)
+
+REM Install Pillow using pip
 pip install -r requirements.txt
 
 if %errorlevel% neq 0 (
     echo.
     echo Failed to install dependencies. Please try again or install manually:
-    echo pip install kivy
+    echo pip install pillow
     pause
     exit /b 1
 )

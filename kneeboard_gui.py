@@ -6,291 +6,281 @@ Designed for Raspberry Pi Zero W 2 with touchscreen.
 """
 
 import os
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
-from kivy.uix.scrollview import ScrollView
-from kivy.graphics import Color, Line, Rectangle
-from kivy.core.window import Window
-from kivy.uix.widget import Widget
-from kivy.properties import ListProperty, ObjectProperty, BooleanProperty
-from kivy.clock import Clock
-from functools import partial
+import sys
+import tkinter as tk
+from tkinter import ttk
+from tkinter import Canvas, Label, Button, Frame, Scrollbar
+from datetime import datetime
+import time
+from PIL import Image, ImageTk, ImageDraw
 
-# Set window properties for the Raspberry Pi
-from kivy.config import Config
-import os
+# Set default window size for the Raspberry Pi touchscreen
+DEFAULT_WIDTH = 480
+DEFAULT_HEIGHT = 854
 
-# Check if running in headless mode
-headless = os.environ.get('DISPLAY', '') == '' or 'HEADLESS' in os.environ
-
-# Configure for headless operation if needed
-if headless:
-    os.environ['KIVY_WINDOW'] = 'egl_rpi'
-    Config.set('graphics', 'fullscreen', 'auto')
-    Config.set('graphics', 'multisamples', '0')
-    Config.set('graphics', 'window_state', 'maximized')
-    Config.set('graphics', 'allow_screensaver', '0')
-else:
-    Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
-    Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
-
-# Set fixed aspect ratio (9:16 for portrait mode)
-Config.set('graphics', 'width', '480')
-Config.set('graphics', 'height', '854')
-Config.set('graphics', 'resizable', '0')
-
-# Window size will be determined by the display when in fullscreen mode
-
-class SquawkCodeInput(BoxLayout):
+class SquawkCodeInput(Frame):
     """Widget for entering a 4-digit squawk code using a pinpad."""
     
-    def __init__(self, **kwargs):
-        super(SquawkCodeInput, self).__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.spacing = 10
-        self.padding = 10
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.configure(padx=10, pady=10)
         
         # Display for the squawk code
-        self.display_layout = BoxLayout(size_hint=(1, 0.2))
+        self.display_frame = Frame(self)
+        self.display_frame.pack(fill=tk.X, pady=5)
+        
         self.squawk_display = Label(
+            self.display_frame,
             text="1200",  # Default VFR squawk code
-            font_size=40,
-            size_hint=(0.8, 1),
-            halign='center',
-            valign='middle'
+            font=("Arial", 40),
+            width=4,
+            anchor=tk.CENTER
         )
-        self.display_layout.add_widget(self.squawk_display)
+        self.squawk_display.pack(side=tk.LEFT, expand=True, fill=tk.X)
         
         # Clear button
         self.clear_btn = Button(
+            self.display_frame,
             text="Clear",
-            size_hint=(0.2, 1),
-            background_color=(1, 0.5, 0.5, 1)
+            font=("Arial", 14),
+            bg="#ffaaaa",
+            command=self.clear_squawk
         )
-        self.clear_btn.bind(on_press=self.clear_squawk)
-        self.display_layout.add_widget(self.clear_btn)
-        
-        self.add_widget(self.display_layout)
+        self.clear_btn.pack(side=tk.RIGHT, padx=5)
         
         # Pinpad layout
-        self.pinpad = GridLayout(cols=3, spacing=5, size_hint=(1, 0.8))
+        self.pinpad = Frame(self)
+        self.pinpad.pack(fill=tk.BOTH, expand=True)
         
-        # Add number buttons (0-9)
-        for i in range(1, 10):
-            btn = Button(text=str(i), font_size=30)
-            btn.bind(on_press=partial(self.update_squawk, str(i)))
-            self.pinpad.add_widget(btn)
+        # Add number buttons (1-9)
+        for i in range(3):
+            for j in range(3):
+                num = i * 3 + j + 1
+                btn = Button(
+                    self.pinpad,
+                    text=str(num),
+                    font=("Arial", 24),
+                    width=3,
+                    height=1,
+                    command=lambda n=num: self.update_squawk(str(n))
+                )
+                btn.grid(row=i, column=j, padx=5, pady=5, sticky="nsew")
         
         # Add 0 button
-        zero_btn = Button(text="0", font_size=30)
-        zero_btn.bind(on_press=partial(self.update_squawk, "0"))
-        self.pinpad.add_widget(zero_btn)
+        zero_btn = Button(
+            self.pinpad,
+            text="0",
+            font=("Arial", 24),
+            width=3,
+            height=1,
+            command=lambda: self.update_squawk("0")
+        )
+        zero_btn.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
         
         # Add common squawk codes
-        vfr_btn = Button(text="VFR\n1200", font_size=20)
-        vfr_btn.bind(on_press=partial(self.set_squawk, "1200"))
-        self.pinpad.add_widget(vfr_btn)
+        vfr_btn = Button(
+            self.pinpad,
+            text="VFR\n1200",
+            font=("Arial", 16),
+            width=3,
+            height=2,
+            command=lambda: self.set_squawk("1200")
+        )
+        vfr_btn.grid(row=3, column=1, padx=5, pady=5, sticky="nsew")
         
-        emergency_btn = Button(text="EMER\n7700", font_size=20, background_color=(1, 0, 0, 1))
-        emergency_btn.bind(on_press=partial(self.set_squawk, "7700"))
-        self.pinpad.add_widget(emergency_btn)
+        emergency_btn = Button(
+            self.pinpad,
+            text="EMER\n7700",
+            font=("Arial", 16),
+            width=3,
+            height=2,
+            bg="#ff0000",
+            fg="white",
+            command=lambda: self.set_squawk("7700")
+        )
+        emergency_btn.grid(row=3, column=2, padx=5, pady=5, sticky="nsew")
         
-        self.add_widget(self.pinpad)
+        # Configure grid weights
+        for i in range(4):
+            self.pinpad.grid_rowconfigure(i, weight=1)
+        for i in range(3):
+            self.pinpad.grid_columnconfigure(i, weight=1)
         
         # Current position in the squawk code (0-3)
         self.current_pos = 0
         self.squawk_code = "1200"
     
-    def update_squawk(self, digit, instance):
+    def update_squawk(self, digit):
         """Update the squawk code with the pressed digit."""
         if self.current_pos < 4:
             # Replace the digit at the current position
             self.squawk_code = self.squawk_code[:self.current_pos] + digit + self.squawk_code[self.current_pos+1:]
             self.current_pos = (self.current_pos + 1) % 4
-            self.squawk_display.text = self.squawk_code
+            self.squawk_display.config(text=self.squawk_code)
     
-    def set_squawk(self, code, instance):
+    def set_squawk(self, code):
         """Set a predefined squawk code."""
         self.squawk_code = code
         self.current_pos = 0
-        self.squawk_display.text = self.squawk_code
+        self.squawk_display.config(text=self.squawk_code)
     
-    def clear_squawk(self, instance):
+    def clear_squawk(self):
         """Clear the squawk code to 0000."""
         self.squawk_code = "0000"
         self.current_pos = 0
-        self.squawk_display.text = self.squawk_code
+        self.squawk_display.config(text=self.squawk_code)
 
 
-class DrawingCanvas(Widget):
+class DrawingCanvas(Canvas):
     """Canvas widget for drawing/taking notes with touch."""
     
-    line_points = ListProperty([])
-    
-    def __init__(self, **kwargs):
-        super(DrawingCanvas, self).__init__(**kwargs)
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.configure(bg="black", highlightthickness=0)
+        
         self.lines = []
         self.current_line = None
+        
+        # Bind mouse events for drawing
+        self.bind("<Button-1>", self.on_touch_down)
+        self.bind("<B1-Motion>", self.on_touch_move)
+        self.bind("<ButtonRelease-1>", self.on_touch_up)
     
-    def on_touch_down(self, touch):
+    def on_touch_down(self, event):
         """Handle touch down event to start a new line."""
-        if self.collide_point(touch.x, touch.y):
-            touch.grab(self)
-            self.current_line = []
-            self.current_line.extend([touch.x, touch.y])
-            with self.canvas:
-                Color(1, 1, 1)  # White color for drawing
-                self.line = Line(points=[touch.x, touch.y, touch.x + 1, touch.y + 1], width=2)
-            return True
-        return super(DrawingCanvas, self).on_touch_down(touch)
+        self.current_line = [event.x, event.y]
+        self.start_x = event.x
+        self.start_y = event.y
     
-    def on_touch_move(self, touch):
+    def on_touch_move(self, event):
         """Handle touch move event to continue the current line."""
-        if touch.grab_current is self:
-            self.current_line.extend([touch.x, touch.y])
-            self.line.points = self.current_line
-            return True
-        return super(DrawingCanvas, self).on_touch_move(touch)
+        if self.current_line:
+            x, y = event.x, event.y
+            # Draw line segment
+            line_id = self.create_line(
+                self.start_x, self.start_y, x, y,
+                fill="white", width=2, smooth=True
+            )
+            self.current_line.extend([x, y])
+            self.start_x = x
+            self.start_y = y
     
-    def on_touch_up(self, touch):
+    def on_touch_up(self, event):
         """Handle touch up event to complete the current line."""
-        if touch.grab_current is self:
-            touch.ungrab(self)
+        if self.current_line:
             self.lines.append(self.current_line)
-            return True
-        return super(DrawingCanvas, self).on_touch_up(touch)
+            self.current_line = None
     
     def clear_canvas(self):
         """Clear all drawings from the canvas."""
-        self.canvas.clear()
+        self.delete("all")
         self.lines = []
         self.current_line = None
 
 
-class NotepadTab(BoxLayout):
+class NotepadTab(Frame):
     """Tab for the notepad functionality."""
     
-    def __init__(self, **kwargs):
-        super(NotepadTab, self).__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.padding = 10
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.configure(padx=10, pady=10)
         
         # Controls for the notepad
-        self.controls = BoxLayout(size_hint=(1, 0.1), spacing=10)
+        self.controls = Frame(self)
+        self.controls.pack(fill=tk.X, pady=5)
         
-        self.clear_btn = Button(text="Clear Notepad", size_hint=(0.3, 1))
-        self.clear_btn.bind(on_press=self.clear_notepad)
-        self.controls.add_widget(self.clear_btn)
-        
-        self.add_widget(self.controls)
+        self.clear_btn = Button(
+            self.controls,
+            text="Clear Notepad",
+            font=("Arial", 14),
+            command=self.clear_notepad
+        )
+        self.clear_btn.pack(side=tk.LEFT, padx=5)
         
         # Drawing canvas
-        self.drawing_canvas = DrawingCanvas(size_hint=(1, 0.9))
-        self.add_widget(self.drawing_canvas)
+        self.drawing_canvas = DrawingCanvas(
+            self,
+            width=DEFAULT_WIDTH - 20,
+            height=DEFAULT_HEIGHT - 100
+        )
+        self.drawing_canvas.pack(fill=tk.BOTH, expand=True)
     
-    def clear_notepad(self, instance):
+    def clear_notepad(self):
         """Clear the notepad canvas."""
         self.drawing_canvas.clear_canvas()
 
 
-class ChecklistButton(Button):
-    """Button representing a checklist section that can be toggled."""
-    
-    is_selected = BooleanProperty(False)
-    
-    def __init__(self, **kwargs):
-        super(ChecklistButton, self).__init__(**kwargs)
-        self.size_hint_y = None
-        self.height = 45  # Increased height for better visibility
-        self.font_size = 16  # Increased font size for better visibility
-        self.background_normal = ''
-        self.background_color = (0.5, 0.5, 0.5, 1)
-        self.bind(is_selected=self.update_appearance)
-    
-    def update_appearance(self, instance, value):
-        """Update the button appearance based on selection state."""
-        if value:  # Selected
-            self.background_color = (0.2, 0.5, 1.0, 1)  # Brighter blue for better contrast
-        else:  # Not selected
-            self.background_color = (0.5, 0.5, 0.5, 1)
-
-
-class ChecklistContent(ScrollView):
+class ChecklistContent(Frame):
     """Container for displaying the items of a specific checklist."""
     
-    def __init__(self, title, items, **kwargs):
-        super(ChecklistContent, self).__init__(**kwargs)
-        self.size_hint_y = None
-        self.height = 0  # Initially hidden
+    def __init__(self, parent, title, items, **kwargs):
+        super().__init__(parent, **kwargs)
         
-        # Main layout for the content
-        self.layout = BoxLayout(orientation='vertical', spacing=2, padding=5, size_hint_y=None)
-        self.layout.bind(minimum_height=self.layout.setter('height'))
+        # Create a canvas with scrollbar
+        self.canvas = Canvas(self, bg="#222222", highlightthickness=0)
+        self.scrollbar = Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = Frame(self.canvas, bg="#222222")
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack widgets
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
         
         # Add the checklist items
         self.add_items(title, items)
-        
-        self.add_widget(self.layout)
     
     def add_items(self, title, items):
         """Add checklist items to the content area."""
         # Title
         title_label = Label(
+            self.scrollable_frame,
             text=title,
-            font_size=18,
-            bold=True,
-            halign='center',  # Center align the title
-            size_hint_y=None,
-            height=30,
-            text_size=(Window.width - 20, None)  # Use full width minus padding
+            font=("Arial", 18, "bold"),
+            bg="#222222",
+            fg="white",
+            pady=5
         )
-        self.layout.add_widget(title_label)
+        title_label.pack(fill=tk.X)
         
         # Items
         for item in items:
             item_label = Label(
+                self.scrollable_frame,
                 text=item,
-                font_size=16,
-                halign='center',  # Center align the text
-                valign='middle',  # Middle vertical alignment
-                size_hint_y=None,
-                text_size=(Window.width - 10, None)  # Use almost full width
+                font=("Arial", 14),
+                bg="#222222",
+                fg="white",
+                justify=tk.LEFT,
+                wraplength=DEFAULT_WIDTH - 40,
+                pady=2
             )
-            item_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
-            self.layout.add_widget(item_label)
-    
-    def show(self):
-        """Show the content."""
-        self.height = 500  # Increased height to show more content
-    
-    def hide(self):
-        """Hide the content."""
-        self.height = 0
+            item_label.pack(fill=tk.X, anchor="w")
 
 
-class ChecklistTab(BoxLayout):
+class ChecklistTab(Frame):
     """Tab for displaying all checklists with button-based navigation."""
     
-    def __init__(self, **kwargs):
-        super(ChecklistTab, self).__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.spacing = 10
-        self.padding = 10
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.configure(padx=10, pady=10)
         
-        # Create the button layout for vertical orientation with larger buttons
-        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=200)
+        # Create the button layout
+        self.button_frame = Frame(self)
+        self.button_frame.pack(fill=tk.X, pady=5)
         
         # Create the content area
-        self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
-        
-        # Add to the main layout
-        self.add_widget(self.button_layout)
-        self.add_widget(self.content_area)
+        self.content_frame = Frame(self, bg="#222222")
+        self.content_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         # Track the currently selected button and content
         self.current_button = None
@@ -313,36 +303,43 @@ class ChecklistTab(BoxLayout):
             ("V-Speeds", self.get_vspeeds_items())
         ]
         
-        # Create buttons and content for each section
-        for title, items in sections:
+        # Create buttons for each section
+        for i, (title, items) in enumerate(sections):
             # Create the button
-            button = ChecklistButton(text=title)
-            button.bind(on_press=lambda btn=button, t=title, i=items: self.on_section_selected(btn, t, i))
-            self.button_layout.add_widget(button)
+            button = Button(
+                self.button_frame,
+                text=title,
+                font=("Arial", 12),
+                bg="#555555",
+                fg="white",
+                height=2,
+                command=lambda t=title, i=items: self.on_section_selected(t, i)
+            )
+            button.grid(row=i//4, column=i%4, padx=2, pady=2, sticky="nsew")
             
+            # Store the button reference
+            if i == 0:
+                self.first_button = button
+        
+        # Configure grid weights
+        for i in range(2):
+            self.button_frame.grid_rowconfigure(i, weight=1)
+        for i in range(4):
+            self.button_frame.grid_columnconfigure(i, weight=1)
+        
         # Select the first section by default
         if sections:
-            first_button = self.button_layout.children[-1]  # Last added is first in the list due to Kivy's ordering
-            self.on_section_selected(first_button, sections[0][0], sections[0][1])
+            self.on_section_selected(sections[0][0], sections[0][1])
     
-    def on_section_selected(self, button, title, items):
+    def on_section_selected(self, title, items):
         """Handle selection of a checklist section."""
-        # Deselect the current button if there is one
-        if self.current_button:
-            self.current_button.is_selected = False
-        
-        # Select the new button
-        button.is_selected = True
-        self.current_button = button
-        
         # Remove the current content if there is any
         if self.current_content:
-            self.content_area.remove_widget(self.current_content)
+            self.current_content.destroy()
         
         # Create and add the new content
-        self.current_content = ChecklistContent(title, items)
-        self.current_content.show()
-        self.content_area.add_widget(self.current_content)
+        self.current_content = ChecklistContent(self.content_frame, title, items)
+        self.current_content.pack(fill=tk.BOTH, expand=True)
     
     def get_preflight_items(self):
         """Get the preflight checklist items."""
@@ -478,15 +475,31 @@ class ChecklistTab(BoxLayout):
         ]
 
 
-class PiperArcherReference(ScrollView):
+class PiperArcherReference(Frame):
     """Reference information for the Piper Archer aircraft."""
     
-    def __init__(self, **kwargs):
-        super(PiperArcherReference, self).__init__(**kwargs)
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
         
-        # Main layout for the reference content
-        self.layout = BoxLayout(orientation='vertical', spacing=5, padding=5, size_hint_y=None)
-        self.layout.bind(minimum_height=self.layout.setter('height'))
+        # Create a canvas with scrollbar
+        self.canvas = Canvas(self, bg="#222222", highlightthickness=0)
+        self.scrollbar = Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = Frame(self.canvas, bg="#222222")
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack widgets
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
         
         # Add reference sections
         self.add_section("Piper Archer (PA-28-181) Specifications", [
@@ -553,179 +566,150 @@ class PiperArcherReference(ScrollView):
             "Approach/Departure: 118.0 - 124.0 MHz",
             "CTAF: 122.7, 122.8, 122.9, 123.0 MHz"
         ])
-        
-        self.add_widget(self.layout)
     
     def add_section(self, title, items):
         """Add a section of reference information."""
         # Section title
         title_label = Label(
+            self.scrollable_frame,
             text=title,
-            font_size=20,
-            bold=True,
-            halign='center',  # Center align the title
-            size_hint_y=None,
-            height=40,
-            text_size=(Window.width - 10, None)  # Use almost full width
+            font=("Arial", 18, "bold"),
+            bg="#222222",
+            fg="white",
+            pady=10
         )
-        self.layout.add_widget(title_label)
+        title_label.pack(fill=tk.X)
         
         # Section content
-        content = "\n".join(items)
-        content_label = Label(
-            text=content,
-            font_size=16,
-            halign='center',  # Center align the content
-            valign='middle',  # Middle vertical alignment
-            size_hint_y=None,
-            text_size=(Window.width - 10, None)  # Use almost full width
-        )
-        content_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
-        self.layout.add_widget(content_label)
+        for item in items:
+            item_label = Label(
+                self.scrollable_frame,
+                text=item,
+                font=("Arial", 14),
+                bg="#222222",
+                fg="white",
+                justify=tk.LEFT,
+                wraplength=DEFAULT_WIDTH - 40,
+                pady=2
+            )
+            item_label.pack(fill=tk.X, anchor="w")
+        
+        # Add some space between sections
+        spacer = Frame(self.scrollable_frame, height=20, bg="#222222")
+        spacer.pack(fill=tk.X)
 
 
-class KneeboardApp(App):
+class KneeboardApp:
     """Main application class for the pilot kneeboard."""
     
-    def build(self):
-        """Build the application UI."""
-        # Main layout
-        self.main_layout = BoxLayout(orientation='vertical')
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Pilot Kneeboard")
+        self.root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}")
         
-        # Header with title (smaller)
-        self.header = BoxLayout(size_hint=(1, 0.06), padding=5, background_color=(0.2, 0.2, 0.2, 1))
-        with self.header.canvas.before:
-            Color(0.2, 0.2, 0.2, 1)  # Dark background for header
-            self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
-        self.header.bind(pos=self._update_header_bg, size=self._update_header_bg)
+        # Set dark theme
+        self.root.configure(bg="#111111")
+        self.style = ttk.Style()
+        self.style.theme_use('clam')  # Use the 'clam' theme as a base
+        self.style.configure("TNotebook", background="#111111", borderwidth=0)
+        self.style.configure("TNotebook.Tab", background="#333333", foreground="white", 
+                            padding=[10, 5], font=('Arial', 14))
+        self.style.map("TNotebook.Tab", background=[("selected", "#555555")])
+        
+        # Main layout
+        self.main_frame = Frame(root, bg="#111111")
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Header with title
+        self.header = Frame(self.main_frame, bg="#222222", height=50)
+        self.header.pack(fill=tk.X)
         
         self.title_label = Label(
+            self.header,
             text="Pilot Kneeboard",
-            font_size=24,
-            bold=True,
-            size_hint=(0.7, 1),
-            color=(1, 1, 1, 1)  # White text for better contrast
+            font=("Arial", 24, "bold"),
+            bg="#222222",
+            fg="white"
         )
-        self.header.add_widget(self.title_label)
+        self.title_label.pack(side=tk.LEFT, padx=10)
         
         # Add a clock display
         self.clock_label = Label(
+            self.header,
             text="00:00:00",
-            font_size=24,
-            size_hint=(0.3, 1),
-            color=(1, 1, 1, 1)  # White text for better contrast
+            font=("Arial", 24),
+            bg="#222222",
+            fg="white"
         )
-        self.header.add_widget(self.clock_label)
-        Clock.schedule_interval(self.update_clock, 1)
+        self.clock_label.pack(side=tk.RIGHT, padx=10)
+        self.update_clock()
         
-        self.main_layout.add_widget(self.header)
+        # Tabbed panel for different sections
+        self.notebook = ttk.Notebook(self.main_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Tabbed panel for different sections with improved visibility for Raspberry Pi
-        self.tabs = TabbedPanel(
-            do_default_tab=False, 
-            size_hint=(1, 0.94), 
-            tab_height=50,  # Increased tab height for better touch targets
-            tab_width=150,   # Fixed tab width for better visibility
-            background_color=(0.15, 0.15, 0.15, 1)  # Darker background for better contrast
-        )
+        # Create tabs
+        self.reference_tab = Frame(self.notebook, bg="#222222")
+        self.notepad_tab = Frame(self.notebook, bg="#222222")
+        self.checklist_tab = Frame(self.notebook, bg="#222222")
         
-        # Custom style for tab items
-        tab_style = {
-            'font_size': 18,
-            'background_color': (0.3, 0.3, 0.3, 1),
-            'color': (1, 1, 1, 1)
-        }
+        # Add tabs to notebook
+        self.notebook.add(self.reference_tab, text="Reference")
+        self.notebook.add(self.notepad_tab, text="Notepad")
+        self.notebook.add(self.checklist_tab, text="Checklists")
         
-        # Reference tab
-        self.reference_tab = TabbedPanelItem(text="Reference")
-        self.reference_tab.font_size = tab_style['font_size']
-        self.reference_tab.background_color = tab_style['background_color']
-        self.reference_tab.color = tab_style['color']
-        self.reference_content = PiperArcherReference()
-        self.reference_tab.add_widget(self.reference_content)
-        self.tabs.add_widget(self.reference_tab)
+        # Initialize tab contents
+        self.reference_content = PiperArcherReference(self.reference_tab)
+        self.reference_content.pack(fill=tk.BOTH, expand=True)
         
-        # Notepad tab
-        self.notepad_tab = TabbedPanelItem(text="Notepad")
-        self.notepad_tab.font_size = tab_style['font_size']
-        self.notepad_tab.background_color = tab_style['background_color']
-        self.notepad_tab.color = tab_style['color']
-        self.notepad = NotepadTab()
-        self.notepad_tab.add_widget(self.notepad)
-        self.tabs.add_widget(self.notepad_tab)
+        self.notepad = NotepadTab(self.notepad_tab)
+        self.notepad.pack(fill=tk.BOTH, expand=True)
         
-        # Checklist tab
-        self.checklist_tab = TabbedPanelItem(text="Checklists")
-        self.checklist_tab.font_size = tab_style['font_size']
-        self.checklist_tab.background_color = tab_style['background_color']
-        self.checklist_tab.color = tab_style['color']
-        self.checklist_content = ChecklistTab()
-        self.checklist_tab.add_widget(self.checklist_content)
-        self.tabs.add_widget(self.checklist_tab)
-        
-        # Set default tab
-        self.tabs.default_tab = self.notepad_tab
-        
-        self.main_layout.add_widget(self.tabs)
-        
-        return self.main_layout
+        self.checklist_content = ChecklistTab(self.checklist_tab)
+        self.checklist_content.pack(fill=tk.BOTH, expand=True)
     
-    def _update_header_bg(self, instance, value):
-        """Update the header background rectangle when the header size/position changes."""
-        self.header_bg.pos = instance.pos
-        self.header_bg.size = instance.size
-    
-    def update_clock(self, dt):
+    def update_clock(self):
         """Update the clock display."""
-        from datetime import datetime
         now = datetime.now()
-        self.clock_label.text = now.strftime("%H:%M:%S")
-        
-    def on_start(self):
-        """Called when the application starts."""
-        # Force redraw of all widgets to ensure proper display
-        Clock.schedule_once(self._force_redraw, 0.1)
+        self.clock_label.config(text=now.strftime("%H:%M:%S"))
+        self.root.after(1000, self.update_clock)  # Update every second
+
+
+def check_headless():
+    """Check if running in headless mode and configure accordingly."""
+    headless = 'DISPLAY' not in os.environ or 'HEADLESS' in os.environ
     
-    def _force_redraw(self, dt):
-        """Force a redraw of the application to ensure all elements are visible."""
-        # Trigger a layout update
-        self.main_layout.do_layout()
-        
-        # Make sure the header is visible
-        self.header.canvas.ask_update()
-        
-        # Make sure the tabs are properly displayed
-        self.tabs.canvas.ask_update()
-        for tab in self.tabs.tab_list:
-            tab.canvas.ask_update()
+    if headless:
+        print("Running in headless mode...")
+        # For Raspberry Pi, we'd need to set up a framebuffer
+        # This is a simplified version - in reality, more setup might be needed
+        os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    
+    return headless
 
 
 if __name__ == "__main__":
-    # Import Window early to set properties before app starts
-    from kivy.core.window import Window
+    # Check if running in headless mode
+    headless = check_headless()
     
-    # Handle headless mode
-    if headless:
-        # Set environment variables for headless operation
-        os.environ['KIVY_GL_BACKEND'] = 'gl'
-        os.environ['KIVY_WINDOW'] = 'egl_rpi'
-        
-        # Import and use Kivy's headless provider if available
-        try:
-            from kivy.base import EventLoop
-            EventLoop.ensure_window()
-            # Set portrait mode with 9:16 aspect ratio
-            Window.size = (480, 854)
-        except Exception as e:
-            print(f"Warning: Headless setup encountered an issue: {e}")
-            print("Attempting to continue with default configuration...")
-    else:
+    # Create the root window
+    root = tk.Tk()
+    
+    # Set window properties
+    if not headless:
         # For non-headless mode, ensure window size is set correctly
-        # Set portrait mode with 9:16 aspect ratio
-        Window.size = (480, 854)
+        root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}")
+        
+        # Force the window to update its size and position
+        root.update_idletasks()
+        
+        # Center the window on screen
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = (screen_width - DEFAULT_WIDTH) // 2
+        y = (screen_height - DEFAULT_HEIGHT) // 2
+        root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}+{x}+{y}")
     
-    # Force the window to update its size and position
-    Window.top = 0
-    Window.left = 0
-    
-    KneeboardApp().run()
+    # Create and run the application
+    app = KneeboardApp(root)
+    root.mainloop()

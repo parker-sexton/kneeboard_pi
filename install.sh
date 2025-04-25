@@ -25,18 +25,16 @@ sudo apt --fix-broken install -y
 echo "Installing Python and pip..."
 sudo apt install -y --fix-broken python3 python3-pip
 
-echo "Installing Kivy dependencies..."
-sudo apt install -y --fix-broken libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
-sudo apt install -y --fix-broken libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-sudo apt install -y --fix-broken libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev
-sudo apt install -y --fix-broken python3-dev
+echo "Installing tkinter and dependencies..."
+sudo apt install -y --fix-broken python3-tk
+sudo apt install -y --fix-broken python3-pil python3-pil.imagetk
 
 # Install additional dependencies for headless operation
 echo "Installing headless operation dependencies..."
-sudo apt install -y --fix-broken libgles2-mesa
+sudo apt install -y --fix-broken xvfb x11-xserver-utils
 
-echo "Installing Kivy..."
-pip3 install kivy --break-system-packages
+echo "Installing Python packages..."
+pip3 install -r requirements.txt --break-system-packages
 
 echo "Making kneeboard_gui.py executable..."
 chmod +x kneeboard_gui.py

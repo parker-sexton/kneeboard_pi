@@ -3,7 +3,9 @@ Description=Pilot Kneeboard Application
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/pi/kneeboard/kneeboard_gui.py
+ExecStart=/usr/bin/xvfb-run -a /usr/bin/python3 /home/pi/kneeboard/kneeboard_gui.py
+Environment="DISPLAY=:0"
+Environment="HEADLESS=1"
 WorkingDirectory=/home/pi/kneeboard
 StandardOutput=inherit
 StandardError=inherit
