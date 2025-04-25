@@ -39,6 +39,11 @@ else:
     Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
     Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
 
+# Set fixed aspect ratio (9:16 for portrait mode)
+Config.set('graphics', 'width', '480')
+Config.set('graphics', 'height', '854')
+Config.set('graphics', 'resizable', '0')
+
 # Window size will be determined by the display when in fullscreen mode
 
 class SquawkCodeInput(BoxLayout):
@@ -588,12 +593,18 @@ class KneeboardApp(App):
         self.main_layout = BoxLayout(orientation='vertical')
         
         # Header with title (smaller)
-        self.header = BoxLayout(size_hint=(1, 0.06), padding=5)
+        self.header = BoxLayout(size_hint=(1, 0.06), padding=5, background_color=(0.2, 0.2, 0.2, 1))
+        with self.header.canvas.before:
+            Color(0.2, 0.2, 0.2, 1)  # Dark background for header
+            self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
+        self.header.bind(pos=self._update_header_bg, size=self._update_header_bg)
+        
         self.title_label = Label(
             text="Pilot Kneeboard",
             font_size=24,
             bold=True,
-            size_hint=(0.7, 1)
+            size_hint=(0.7, 1),
+            color=(1, 1, 1, 1)  # White text for better contrast
         )
         self.header.add_widget(self.title_label)
         
@@ -601,7 +612,8 @@ class KneeboardApp(App):
         self.clock_label = Label(
             text="00:00:00",
             font_size=24,
-            size_hint=(0.3, 1)
+            size_hint=(0.3, 1),
+            color=(1, 1, 1, 1)  # White text for better contrast
         )
         self.header.add_widget(self.clock_label)
         Clock.schedule_interval(self.update_clock, 1)
@@ -613,7 +625,8 @@ class KneeboardApp(App):
             do_default_tab=False, 
             size_hint=(1, 0.94), 
             tab_height=50,  # Increased tab height for better touch targets
-            tab_width=150   # Fixed tab width for better visibility
+            tab_width=150,   # Fixed tab width for better visibility
+            background_color=(0.15, 0.15, 0.15, 1)  # Darker background for better contrast
         )
         
         # Custom style for tab items
@@ -657,14 +670,40 @@ class KneeboardApp(App):
         
         return self.main_layout
     
+    def _update_header_bg(self, instance, value):
+        """Update the header background rectangle when the header size/position changes."""
+        self.header_bg.pos = instance.pos
+        self.header_bg.size = instance.size
+    
     def update_clock(self, dt):
         """Update the clock display."""
         from datetime import datetime
         now = datetime.now()
         self.clock_label.text = now.strftime("%H:%M:%S")
+        
+    def on_start(self):
+        """Called when the application starts."""
+        # Force redraw of all widgets to ensure proper display
+        Clock.schedule_once(self._force_redraw, 0.1)
+    
+    def _force_redraw(self, dt):
+        """Force a redraw of the application to ensure all elements are visible."""
+        # Trigger a layout update
+        self.main_layout.do_layout()
+        
+        # Make sure the header is visible
+        self.header.canvas.ask_update()
+        
+        # Make sure the tabs are properly displayed
+        self.tabs.canvas.ask_update()
+        for tab in self.tabs.tab_list:
+            tab.canvas.ask_update()
 
 
 if __name__ == "__main__":
+    # Import Window early to set properties before app starts
+    from kivy.core.window import Window
+    
     # Handle headless mode
     if headless:
         # Set environment variables for headless operation
@@ -673,12 +712,20 @@ if __name__ == "__main__":
         
         # Import and use Kivy's headless provider if available
         try:
-            from kivy.core.window import Window
             from kivy.base import EventLoop
             EventLoop.ensure_window()
-            Window.size = (800, 480)  # Set a default size for headless mode
+            # Set portrait mode with 9:16 aspect ratio
+            Window.size = (480, 854)
         except Exception as e:
             print(f"Warning: Headless setup encountered an issue: {e}")
             print("Attempting to continue with default configuration...")
+    else:
+        # For non-headless mode, ensure window size is set correctly
+        # Set portrait mode with 9:16 aspect ratio
+        Window.size = (480, 854)
+    
+    # Force the window to update its size and position
+    Window.top = 0
+    Window.left = 0
     
     KneeboardApp().run()
