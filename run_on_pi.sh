@@ -28,27 +28,44 @@ fi
 # Check if Kivy is installed
 if ! pip3 list | grep -q "kivy"; then
     echo "Kivy is not installed. Installing..."
-    sudo apt install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
-    sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-    sudo apt install -y libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev
-    sudo apt install -y python3-dev
-    pip3 install kivy
+    sudo apt update
+    sudo apt install -y --fix-broken libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+    sudo apt install -y --fix-broken libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+    sudo apt install -y --fix-broken libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavutil-dev libswscale-dev libswresample-dev
+    sudo apt install -y --fix-broken python3-dev
+    pip3 install kivy --break-system-packages
 fi
 
 # Make sure the script is executable
 chmod +x kneeboard_gui.py
 
-# Set display to portrait mode if connected to a display
-if command -v xrandr &> /dev/null; then
-    echo "Setting display to portrait orientation..."
-    xrandr --output HDMI-1 --rotate right || true
-    # If the above fails, try with the primary display
-    xrandr --output $(xrandr | grep " connected" | head -n 1 | cut -d " " -f1) --rotate right || true
-fi
+# Check if running in headless mode
+if [ -z "$DISPLAY" ]; then
+    echo "Running in headless mode..."
+    export HEADLESS=1
+    
+    # Make sure required packages for headless operation are installed
+    if ! dpkg -l | grep -q "libgles2-mesa"; then
+        echo "Installing OpenGL ES libraries for headless operation..."
+        sudo apt install -y --fix-broken libgles2-mesa
+    fi
+    
+    # Run the application with headless environment
+    echo "Starting Pilot Kneeboard application in headless mode..."
+    KIVY_WINDOW=egl_rpi KIVY_GL_BACKEND=gl python3 kneeboard_gui.py
+else
+    # Set display to portrait mode if connected to a display
+    if command -v xrandr &> /dev/null; then
+        echo "Setting display to portrait orientation..."
+        xrandr --output HDMI-1 --rotate right || true
+        # If the above fails, try with the primary display
+        xrandr --output $(xrandr | grep " connected" | head -n 1 | cut -d " " -f1) --rotate right || true
+    fi
 
-# Run the application
-echo "Starting Pilot Kneeboard application..."
-python3 kneeboard_gui.py
+    # Run the application
+    echo "Starting Pilot Kneeboard application..."
+    python3 kneeboard_gui.py
+fi
 
 # Reset display orientation when the app exits
 if command -v xrandr &> /dev/null; then

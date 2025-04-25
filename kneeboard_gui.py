@@ -23,8 +23,22 @@ from functools import partial
 
 # Set window properties for the Raspberry Pi
 from kivy.config import Config
-Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
-Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
+import os
+
+# Check if running in headless mode
+headless = os.environ.get('DISPLAY', '') == '' or 'HEADLESS' in os.environ
+
+# Configure for headless operation if needed
+if headless:
+    os.environ['KIVY_WINDOW'] = 'egl_rpi'
+    Config.set('graphics', 'fullscreen', 'auto')
+    Config.set('graphics', 'multisamples', '0')
+    Config.set('graphics', 'window_state', 'maximized')
+    Config.set('graphics', 'allow_screensaver', '0')
+else:
+    Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
+    Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
+
 # Window size will be determined by the display when in fullscreen mode
 
 class SquawkCodeInput(BoxLayout):
@@ -225,7 +239,7 @@ class ChecklistContent(ScrollView):
             text=title,
             font_size=18,
             bold=True,
-            halign='left',
+            halign='center',  # Center align the title
             size_hint_y=None,
             height=30,
             text_size=(Window.width - 20, None)  # Use full width minus padding
@@ -237,10 +251,10 @@ class ChecklistContent(ScrollView):
             item_label = Label(
                 text=item,
                 font_size=16,
-                halign='left',
-                valign='top',
+                halign='center',  # Center align the text
+                valign='middle',  # Middle vertical alignment
                 size_hint_y=None,
-                text_size=(Window.width - 20, None)  # Use full width minus padding
+                text_size=(Window.width - 10, None)  # Use almost full width
             )
             item_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
             self.layout.add_widget(item_label)
@@ -544,10 +558,10 @@ class PiperArcherReference(ScrollView):
             text=title,
             font_size=20,
             bold=True,
-            halign='left',
+            halign='center',  # Center align the title
             size_hint_y=None,
             height=40,
-            text_size=(Window.width - 20, None)  # Use full width minus padding
+            text_size=(Window.width - 10, None)  # Use almost full width
         )
         self.layout.add_widget(title_label)
         
@@ -556,10 +570,10 @@ class PiperArcherReference(ScrollView):
         content_label = Label(
             text=content,
             font_size=16,
-            halign='left',
-            valign='top',
+            halign='center',  # Center align the content
+            valign='middle',  # Middle vertical alignment
             size_hint_y=None,
-            text_size=(Window.width - 20, None)  # Use full width minus padding
+            text_size=(Window.width - 10, None)  # Use almost full width
         )
         content_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
         self.layout.add_widget(content_label)
@@ -651,4 +665,20 @@ class KneeboardApp(App):
 
 
 if __name__ == "__main__":
+    # Handle headless mode
+    if headless:
+        # Set environment variables for headless operation
+        os.environ['KIVY_GL_BACKEND'] = 'gl'
+        os.environ['KIVY_WINDOW'] = 'egl_rpi'
+        
+        # Import and use Kivy's headless provider if available
+        try:
+            from kivy.core.window import Window
+            from kivy.base import EventLoop
+            EventLoop.ensure_window()
+            Window.size = (800, 480)  # Set a default size for headless mode
+        except Exception as e:
+            print(f"Warning: Headless setup encountered an issue: {e}")
+            print("Attempting to continue with default configuration...")
+    
     KneeboardApp().run()
