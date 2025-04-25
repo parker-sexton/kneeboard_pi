@@ -39,6 +39,12 @@ if ! python3 -c "from PIL import Image, ImageTk" &> /dev/null; then
     pip3 install -r requirements.txt --break-system-packages
 fi
 
+# Check if xvfbwrapper is installed
+if ! python3 -c "import xvfbwrapper" &> /dev/null; then
+    echo "xvfbwrapper is not installed. Installing..."
+    pip3 install xvfbwrapper --break-system-packages
+fi
+
 # Make sure the script is executable
 chmod +x kneeboard_gui.py
 
@@ -53,9 +59,9 @@ if [ -z "$DISPLAY" ]; then
         sudo apt install -y --fix-broken xvfb x11-xserver-utils
     fi
     
-    # Run the application with Xvfb
+    # Run the application in headless mode
     echo "Starting Pilot Kneeboard application in headless mode..."
-    xvfb-run -a python3 kneeboard_gui.py
+    python3 kneeboard_gui.py
 else
     # Set display to portrait mode if connected to a display
     if command -v xrandr &> /dev/null; then

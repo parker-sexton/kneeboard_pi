@@ -677,39 +677,79 @@ class KneeboardApp:
 
 def check_headless():
     """Check if running in headless mode and configure accordingly."""
-    headless = 'DISPLAY' not in os.environ or 'HEADLESS' in os.environ
+    # Check if we're in headless mode
+    headless = False
+    vdisplay = None
     
-    if headless:
-        print("Running in headless mode...")
-        # For Raspberry Pi, we'd need to set up a framebuffer
-        # This is a simplified version - in reality, more setup might be needed
-        os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    # On Linux/Unix systems
+    if os.name == 'posix':
+        headless = 'DISPLAY' not in os.environ or 'HEADLESS' in os.environ
+        
+        if headless:
+            print("Running in headless mode on Linux/Unix...")
+            try:
+                # Try to import Xvfb for virtual display
+                from xvfbwrapper import Xvfb
+                print("Setting up virtual display with Xvfb...")
+                vdisplay = Xvfb(width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT)
+                vdisplay.start()
+                # Set the DISPLAY environment variable
+                if 'DISPLAY' not in os.environ:
+                    os.environ['DISPLAY'] = ':1'
+            except ImportError:
+                print("Xvfbwrapper not found. Installing...")
+                try:
+                    import subprocess
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "xvfbwrapper"])
+                    from xvfbwrapper import Xvfb
+                    print("Setting up virtual display with Xvfb...")
+                    vdisplay = Xvfb(width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT)
+                    vdisplay.start()
+                    # Set the DISPLAY environment variable
+                    if 'DISPLAY' not in os.environ:
+                        os.environ['DISPLAY'] = ':1'
+                except:
+                    print("Failed to set up virtual display. Falling back to dummy driver.")
+                    os.environ['SDL_VIDEODRIVER'] = 'dummy'
     
-    return headless
+    # On Windows systems
+    elif os.name == 'nt':
+        headless = 'HEADLESS' in os.environ
+        if headless:
+            print("Running in headless mode on Windows...")
+            # Windows doesn't need Xvfb, but we'll set a flag for headless operation
+            # This will be used to avoid operations that require a display
+    
+    return headless, vdisplay
 
 
 if __name__ == "__main__":
     # Check if running in headless mode
-    headless = check_headless()
+    headless, vdisplay = check_headless()
     
-    # Create the root window
-    root = tk.Tk()
-    
-    # Set window properties
-    if not headless:
-        # For non-headless mode, ensure window size is set correctly
-        root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}")
+    try:
+        # Create the root window
+        root = tk.Tk()
         
-        # Force the window to update its size and position
-        root.update_idletasks()
+        # Set window properties
+        if not headless:
+            # For non-headless mode, ensure window size is set correctly
+            root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}")
+            
+            # Force the window to update its size and position
+            root.update_idletasks()
+            
+            # Center the window on screen
+            screen_width = root.winfo_screenwidth()
+            screen_height = root.winfo_screenheight()
+            x = (screen_width - DEFAULT_WIDTH) // 2
+            y = (screen_height - DEFAULT_HEIGHT) // 2
+            root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}+{x}+{y}")
         
-        # Center the window on screen
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        x = (screen_width - DEFAULT_WIDTH) // 2
-        y = (screen_height - DEFAULT_HEIGHT) // 2
-        root.geometry(f"{DEFAULT_WIDTH}x{DEFAULT_HEIGHT}+{x}+{y}")
-    
-    # Create and run the application
-    app = KneeboardApp(root)
-    root.mainloop()
+        # Create and run the application
+        app = KneeboardApp(root)
+        root.mainloop()
+    finally:
+        # Clean up the virtual display if it was created
+        if headless and vdisplay is not None:
+            vdisplay.stop()

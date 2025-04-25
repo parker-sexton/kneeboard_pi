@@ -33,6 +33,7 @@ sudo apt install -y --fix-broken python3-pil python3-pil.imagetk
 echo "Installing headless operation dependencies..."
 sudo apt install -y --fix-broken xvfb x11-xserver-utils
 
+# Install Python packages from requirements.txt
 echo "Installing Python packages..."
 pip3 install -r requirements.txt --break-system-packages
 
