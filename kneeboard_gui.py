@@ -683,11 +683,48 @@ def check_headless():
     
     # On Linux/Unix systems
     if os.name == 'posix':
+        # Check if we're on a Raspberry Pi
+        is_raspberry_pi = False
+        try:
+            with open('/proc/device-tree/model', 'r') as f:
+                if 'Raspberry Pi' in f.read():
+                    is_raspberry_pi = True
+        except:
+            pass
+        
         headless = 'DISPLAY' not in os.environ or 'HEADLESS' in os.environ
         
         if headless:
             print("Running in headless mode on Linux/Unix...")
+            
+            # For Raspberry Pi, we'll use the framebuffer directly
+            if is_raspberry_pi:
+                print("Detected Raspberry Pi, using framebuffer...")
+                # Set environment variables for the framebuffer
+                os.environ['DISPLAY'] = ':0'
+                os.environ['SDL_FBDEV'] = '/dev/fb0'
+                os.environ['SDL_VIDEODRIVER'] = 'fbcon'
+                return headless, None
+            
+            # For other Linux systems, try to use Xvfb
             try:
+                # First check if DISPLAY is already set by the system
+                if 'DISPLAY' in os.environ and os.environ['DISPLAY']:
+                    print(f"Using existing display: {os.environ['DISPLAY']}")
+                    return headless, None
+                
+                # Try to use xvfb-run directly
+                print("Trying to use system xvfb-run...")
+                import subprocess
+                try:
+                    # Check if xvfb-run is available
+                    subprocess.run(['which', 'xvfb-run'], check=True, capture_output=True)
+                    # Set a display number
+                    os.environ['DISPLAY'] = ':1'
+                    return headless, None
+                except:
+                    pass
+                
                 # Try to import Xvfb for virtual display
                 from xvfbwrapper import Xvfb
                 print("Setting up virtual display with Xvfb...")
@@ -708,8 +745,9 @@ def check_headless():
                     # Set the DISPLAY environment variable
                     if 'DISPLAY' not in os.environ:
                         os.environ['DISPLAY'] = ':1'
-                except:
-                    print("Failed to set up virtual display. Falling back to dummy driver.")
+                except Exception as e:
+                    print(f"Failed to set up virtual display: {e}")
+                    print("Falling back to dummy driver.")
                     os.environ['SDL_VIDEODRIVER'] = 'dummy'
     
     # On Windows systems

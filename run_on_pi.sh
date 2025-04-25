@@ -53,14 +53,24 @@ if [ -z "$DISPLAY" ]; then
     echo "Running in headless mode..."
     export HEADLESS=1
     
-    # Make sure required packages for headless operation are installed
-    if ! dpkg -l | grep -q "xvfb"; then
-        echo "Installing X virtual framebuffer for headless operation..."
-        sudo apt install -y --fix-broken xvfb x11-xserver-utils
+    # Check if we're on a Raspberry Pi
+    if [ -f /proc/device-tree/model ] && grep -q "Raspberry Pi" /proc/device-tree/model; then
+        echo "Detected Raspberry Pi, using framebuffer..."
+        # Set environment variables for the framebuffer
+        export DISPLAY=:0
+        export SDL_FBDEV=/dev/fb0
+        export SDL_VIDEODRIVER=fbcon
+    else
+        # For non-Raspberry Pi systems, try to use Xvfb
+        echo "Not on Raspberry Pi, trying to use Xvfb..."
+        if ! dpkg -l | grep -q "xvfb"; then
+            echo "Installing X virtual framebuffer for headless operation..."
+            sudo apt install -y --fix-broken xvfb x11-xserver-utils
+        fi
     fi
     
-    # Run the application in headless mode
-    echo "Starting Pilot Kneeboard application in headless mode..."
+    # Run the application
+    echo "Starting Pilot Kneeboard application..."
     python3 kneeboard_gui.py
 else
     # Set display to portrait mode if connected to a display

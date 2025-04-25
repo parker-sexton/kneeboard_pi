@@ -38,7 +38,11 @@ TMP_SERVICE_FILE=$(mktemp)
 cat "$CURRENT_DIR/kneeboard.service" > "$TMP_SERVICE_FILE"
 
 # Update the paths in the service file
-sed -i "s|ExecStart=.*|ExecStart=/bin/bash -c 'HEADLESS=1 DISPLAY=:0 /usr/bin/xvfb-run -a /usr/bin/python3 $CURRENT_DIR/kneeboard_gui.py'|" "$TMP_SERVICE_FILE"
+sed -i "s|ExecStart=.*|ExecStart=/usr/bin/python3 $CURRENT_DIR/kneeboard_gui.py|" "$TMP_SERVICE_FILE"
+sed -i "s|Environment=\"DISPLAY=:0\".*|Environment=\"DISPLAY=:0\"|" "$TMP_SERVICE_FILE"
+sed -i "s|Environment=\"HEADLESS=1\".*|Environment=\"HEADLESS=1\"|" "$TMP_SERVICE_FILE"
+sed -i "s|Environment=\"SDL_FBDEV=/dev/fb0\".*|Environment=\"SDL_FBDEV=/dev/fb0\"|" "$TMP_SERVICE_FILE"
+sed -i "s|Environment=\"SDL_VIDEODRIVER=fbcon\".*|Environment=\"SDL_VIDEODRIVER=fbcon\"|" "$TMP_SERVICE_FILE"
 sed -i "s|WorkingDirectory=.*|WorkingDirectory=$CURRENT_DIR|" "$TMP_SERVICE_FILE"
 sed -i "s|User=.*|User=$CURRENT_USER|" "$TMP_SERVICE_FILE"
 
