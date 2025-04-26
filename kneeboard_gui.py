@@ -23,7 +23,6 @@ from functools import partial
 
 # Set window properties for the Raspberry Pi
 from kivy.config import Config
-import os
 
 # Check if running in headless mode
 headless = os.environ.get('DISPLAY', '') == '' or 'HEADLESS' in os.environ
@@ -593,7 +592,7 @@ class KneeboardApp(App):
         self.main_layout = BoxLayout(orientation='vertical')
         
         # Header with title (smaller)
-        self.header = BoxLayout(size_hint=(1, 0.06), padding=5, background_color=(0.2, 0.2, 0.2, 1))
+        self.header = BoxLayout(size_hint=(1, 0.06), padding=5)
         with self.header.canvas.before:
             Color(0.2, 0.2, 0.2, 1)  # Dark background for header
             self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
