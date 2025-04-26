@@ -38,9 +38,9 @@ else:
     Config.set('graphics', 'fullscreen', 'auto')  # Enable fullscreen mode
     Config.set('graphics', 'orientation', 'portrait')  # Set portrait orientation
 
-# Set fixed aspect ratio (9:16 for portrait mode)
+# Set fixed aspect ratio (3:5 for portrait mode)
 Config.set('graphics', 'width', '480')
-Config.set('graphics', 'height', '854')
+Config.set('graphics', 'height', '800')
 Config.set('graphics', 'resizable', '0')
 
 # Window size will be determined by the display when in fullscreen mode
@@ -592,7 +592,7 @@ class KneeboardApp(App):
         self.main_layout = BoxLayout(orientation='vertical')
         
         # Header with title (smaller)
-        self.header = BoxLayout(size_hint=(1, 0.06), padding=5)
+        self.header = BoxLayout(size_hint=(1, 0.1), padding=5)
         with self.header.canvas.before:
             Color(0.2, 0.2, 0.2, 1)  # Dark background for header
             self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
@@ -622,7 +622,7 @@ class KneeboardApp(App):
         # Tabbed panel for different sections with improved visibility for Raspberry Pi
         self.tabs = TabbedPanel(
             do_default_tab=False, 
-            size_hint=(1, 0.94), 
+            size_hint=(1, 0.9), 
             tab_height=50,  # Increased tab height for better touch targets
             tab_width=150,   # Fixed tab width for better visibility
             background_color=(0.15, 0.15, 0.15, 1)  # Darker background for better contrast
@@ -713,15 +713,15 @@ if __name__ == "__main__":
         try:
             from kivy.base import EventLoop
             EventLoop.ensure_window()
-            # Set portrait mode with 9:16 aspect ratio
-            Window.size = (480, 854)
+            # Set portrait mode with 3:5 aspect ratio
+            Window.size = (480, 800)
         except Exception as e:
             print(f"Warning: Headless setup encountered an issue: {e}")
             print("Attempting to continue with default configuration...")
     else:
         # For non-headless mode, ensure window size is set correctly
-        # Set portrait mode with 9:16 aspect ratio
-        Window.size = (480, 854)
+        # Set portrait mode with 3:5 aspect ratio
+        Window.size = (480, 800)
     
     # Force the window to update its size and position
     Window.top = 0
