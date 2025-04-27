@@ -302,17 +302,17 @@ class ChecklistTab(BoxLayout):
         self.add_checklist_sections()
 
     def add_checklist_sections(self):
-        # Dynamically find all get_*_items methods
-        section_methods = [
-            (name, getattr(self, name))
-            for name in dir(self)
-            if name.startswith('get_') and name.endswith('_items') and callable(getattr(self, name))
+        sections = [
+            ("Preflight", self.get_preflight_items()),
+            ("Engine Start", self.get_engine_start_items()),
+            ("Ground Ops", self.get_ground_ops_items()),
+            ("Takeoff", self.get_takeoff_items()),
+            ("Cruise", self.get_cruise_items()),
+            ("Landing", self.get_landing_items()),
+            ("Securing", self.get_securing_items()),
+            ("V-Speeds", self.get_vspeeds_items())
         ]
-        # Sort for consistent order (optional: could use a custom order if needed)
-        section_methods.sort()
-        sections = [(self._format_section_name(name), method()) for name, method in section_methods]
 
-        self.button_layout.clear_widgets()
         for title, items in sections:
             button = ChecklistButton(text=title, size_hint_y=None, height=50)
             button.bind(on_press=lambda btn=button, t=title, i=items: self.on_section_selected(btn, t, i))
@@ -322,11 +322,6 @@ class ChecklistTab(BoxLayout):
         if self.button_layout.children:
             first_button = self.button_layout.children[-1]  # GridLayout stores in reverse
             self.on_section_selected(first_button, sections[0][0], sections[0][1])
-
-    def _format_section_name(self, method_name):
-        # Convert get_engine_start_items -> Engine Start
-        base = method_name[len('get_'):-len('_items')]
-        return base.replace('_', ' ').title()
 
     def on_section_selected(self, button, title, items):
         if self.current_button:
@@ -339,6 +334,140 @@ class ChecklistTab(BoxLayout):
 
         self.current_content = ChecklistContent(title, items)
         self.content_area.add_widget(self.current_content)
+
+    
+    def get_preflight_items(self):
+        """Get the preflight checklist items."""
+        return [
+            "FUEL/OIL",
+            "1. FUEL TANKS - CHECK/SECURE",
+            "2. FUEL SUMPS - DRAIN",
+            "3. ENGINE OIL - CHECK/SECURE/MIN. 4 QTS",
+            "",
+            "CABIN",
+            "1. PAPERWORK - ARROW",
+            "2. FIRE EXTINGUISHER - CHECK/SECURE",
+            "3. PITOT/STATIC SYSTEM - DRAIN",
+            "4. ALTERNATE STATIC SOURCE - OFF/FWD",
+            "5. MAGNETOS AND ALL SWITCHES - OFF",
+            "6. STABILATOR/RUDDER TRIM - NEUTRAL",
+            "7. TACH/HOBBS - CONFIRM/RECORD",
+            "8. BATTERY MASTER SWITCH - ON",
+            "9. EXTERIOR LIGHTING SWITCHES - ON",
+            "10. PITOT HEAT SWITCH - ON",
+            "11. FUEL GAUGES - QUANTITY CHECK",
+            "12. EXTERIOR LIGHTS - CHECK",
+            "13. PITOT HEAT - CHECK",
+            "14. STALL WARNING HORN - CHECK",
+            "15. EXTERIOR LIGHTING SWITCHES - OFF",
+            "16. PITOT HEAT SWITCH - OFF",
+            "17. BATTERY MASTER SWITCH - OFF",
+            "18. FLAPS - EXTEND (40º)"
+        ]
+    
+    def get_engine_start_items(self):
+        """Get the engine start checklist items."""
+        return [
+            "BEFORE STARTING ENGINE",
+            "1. AIRCRAFT - DISPATCH IN FLIGHT CIRCLE",
+            "2. PAX BRIEFING - S.A.F.E.",
+            "3. BELTS/BRAKE/SEATS - LOCKED/FASTENED",
+            "4. FUEL SELECTOR - DESIRED TANK",
+            "5. OVERHEAD SWITCHES - OFF",
+            "6. EMERGENCY BATTERY - ARM",
+            "7. E VOLTS - > 23.3 VOLTS",
+            "*IF < 23.3 VOLTS, CHECK AGAIN AFTER RUN UP*",
+            "8. ANNUNCIATORS - CHECK",
+            "9. BATTERY MASTER - ON",
+            "10. ALTERNATOR SWITCH - ON",
+            "11. FIN STROBE - ON/DOWN",
+            "12. CIRCUIT BREAKERS - CHECK",
+            "13. ALT-AIR - CLOSED",
+            "14. L/R MAGNETO SWITCHES - ON"
+        ]
+    
+    def get_ground_ops_items(self):
+        """Get the ground operations checklist items."""
+        return [
+            "RUN UP CHECK",
+            "1. NAV/COM - SET",
+            "2. CIRCUIT BREAKERS - CHECK",
+            "3. ALTIMETERS - SET",
+            "4. FLIGHT INSTRUMENTS - CHECK",
+            "5. FLIGHT CONTROLS - FREE AND CORRECT",
+            "6. AUTOPILOT - CHECK",
+            "7. STABILATOR/RUDDER TRIM - SET",
+            "8. FUEL PUMP - ON",
+            "9. FUEL SELECTOR - SWITCH TANKS",
+            "10. MIXTURE - RICH",
+            "11. THROTTLE - 2000 RPM"
+        ]
+    
+    def get_takeoff_items(self):
+        """Get the takeoff checklist items."""
+        return [
+            "NORMAL TAKEOFF",
+            "1. FLAPS - 0º",
+            "2. THROTTLE - FULL",
+            "3. ENGINE INSTRUMENTS - CHECK",
+            "4. ROTATE - 60 KIAS",
+            "5. CLIMB - 76 KIAS"
+        ]
+    
+    def get_cruise_items(self):
+        """Get the cruise checklist items."""
+        return [
+            "CRUISE",
+            "1. POWER - SET PER TABLE",
+            "2. MIXTURE - LEAN AS REQUIRED",
+            "3. FUEL SELECTOR - ALTERNATE PER SCHEDULE"
+        ]
+    
+    def get_landing_items(self):
+        """Get the landing checklist items."""
+        return [
+            "APPROACH",
+            "1. SEATS/SEAT BELTS - SET/FASTENED",
+            "2. LIGHTS - SET AS REQUIRED",
+            "3. FUEL PUMP - ON",
+            "4. FUEL SELECTOR - FULLEST TANK",
+            "5. MIXTURE - SET AS REQUIRED",
+            "6. AIR CONDITIONER - OFF"
+        ]
+    
+    def get_securing_items(self):
+        """Get the securing checklist items."""
+        return [
+            "SECURING",
+            "1. SQUAWK - 1200",
+            "2. LIGHTS/DIM SWITCHES - OFF",
+            "3. AVIONICS MASTER - OFF",
+            "4. EMERGENCY BATTERY - OFF",
+            "5. AIR CONDITIONER - OFF",
+            "6. ELECTRICAL SWITCHES - OFF",
+            "7. THROTTLE - IDLE",
+            "8. MIXTURE - CUT-OFF",
+            "9. L/R MAGNETO SWITCHES - OFF"
+        ]
+    
+    def get_vspeeds_items(self):
+        """Get the V-speeds checklist items."""
+        return [
+            "V-SPEEDS @ MAX GROSS WEIGHT",
+            "Vso - 45 KIAS",
+            "Vs - 50 KIAS",
+            "Vr - 60 KIAS",
+            "Vx - 64 KIAS",
+            "Vy - 76 KIAS",
+            "Vg - 76 KIAS",
+            "Vfe - 102 KIAS",
+            "Vno - 125 KIAS",
+            "Vne - 154 KIAS",
+            "Vo (2550 lbs.) - 113 KIAS",
+            "Vo (1917 lbs.) - 98 KIAS",
+            "",
+            "MAX DEMONSTRATED CROSSWIND - 17 KTS"
+        ]
 
 
 class PiperArcherReference(ScrollView):
