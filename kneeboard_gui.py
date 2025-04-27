@@ -225,83 +225,58 @@ class ChecklistContent(ScrollView):
     
     def __init__(self, title, items, **kwargs):
         super(ChecklistContent, self).__init__(**kwargs)
-        self.size_hint_y = None
-        self.height = 0  # Initially hidden
-        
+        self.size_hint_y = 1  # Always fill available vertical space
+        self.do_scroll_x = False
+        self.do_scroll_y = True
         # Main layout for the content
         self.layout = BoxLayout(orientation='vertical', spacing=2, padding=5, size_hint_y=None)
         self.layout.bind(minimum_height=self.layout.setter('height'))
-        
         # Add the checklist items
         self.add_items(title, items)
-        
         self.add_widget(self.layout)
-    
     def add_items(self, title, items):
-        """Add checklist items to the content area."""
         # Title
         title_label = Label(
             text=title,
             font_size=18,
             bold=True,
-            halign='center',  # Center align the title
+            halign='center',
             size_hint_y=None,
             height=30,
-            text_size=(Window.width - 20, None)  # Use full width minus padding
+            text_size=(Window.width - 20, None)
         )
         self.layout.add_widget(title_label)
-        
         # Items
         for item in items:
             item_label = Label(
                 text=item,
                 font_size=16,
-                halign='center',  # Center align the text
-                valign='middle',  # Middle vertical alignment
+                halign='center',
+                valign='middle',
                 size_hint_y=None,
-                text_size=(Window.width - 10, None)  # Use almost full width
+                text_size=(Window.width - 10, None)
             )
             item_label.bind(texture_size=lambda instance, size: setattr(instance, 'height', size[1]))
             self.layout.add_widget(item_label)
-    
-    def show(self):
-        """Show the content."""
-        self.height = 500  # Increased height to show more content
-    
-    def hide(self):
-        """Hide the content."""
-        self.height = 0
 
 
 class ChecklistTab(BoxLayout):
     """Tab for displaying all checklists with button-based navigation."""
-    
     def __init__(self, **kwargs):
         super(ChecklistTab, self).__init__(**kwargs)
         self.orientation = 'vertical'
         self.spacing = 10
         self.padding = 10
-        
-        # Create the button layout for vertical orientation with larger buttons
-        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=200)
-        
-        # Create the content area
+        # Button layout (fixed height)
+        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=100)
+        # Content area (fills remaining space)
         self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
-        
-        # Add to the main layout
         self.add_widget(self.button_layout)
         self.add_widget(self.content_area)
-        
-        # Track the currently selected button and content
         self.current_button = None
         self.current_content = None
-        
-        # Add the checklist sections
         self.add_checklist_sections()
-    
     def add_checklist_sections(self):
-        """Add all checklist sections with their buttons and content."""
-        # Define the checklist sections
         sections = [
             ("Preflight", self.get_preflight_items()),
             ("Engine Start", self.get_engine_start_items()),
@@ -312,36 +287,21 @@ class ChecklistTab(BoxLayout):
             ("Securing", self.get_securing_items()),
             ("V-Speeds", self.get_vspeeds_items())
         ]
-        
-        # Create buttons and content for each section
         for title, items in sections:
-            # Create the button
             button = ChecklistButton(text=title)
             button.bind(on_press=lambda btn=button, t=title, i=items: self.on_section_selected(btn, t, i))
             self.button_layout.add_widget(button)
-            
-        # Select the first section by default
         if sections:
-            first_button = self.button_layout.children[-1]  # Last added is first in the list due to Kivy's ordering
+            first_button = self.button_layout.children[-1]
             self.on_section_selected(first_button, sections[0][0], sections[0][1])
-    
     def on_section_selected(self, button, title, items):
-        """Handle selection of a checklist section."""
-        # Deselect the current button if there is one
         if self.current_button:
             self.current_button.is_selected = False
-        
-        # Select the new button
         button.is_selected = True
         self.current_button = button
-        
-        # Remove the current content if there is any
         if self.current_content:
             self.content_area.remove_widget(self.current_content)
-        
-        # Create and add the new content
         self.current_content = ChecklistContent(title, items)
-        self.current_content.show()
         self.content_area.add_widget(self.current_content)
     
     def get_preflight_items(self):
