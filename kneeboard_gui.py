@@ -267,15 +267,40 @@ class ChecklistTab(BoxLayout):
         self.orientation = 'vertical'
         self.spacing = 10
         self.padding = 10
-        # Button layout (fixed height)
-        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=200)
-        # Content area (fills remaining space)
-        self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
-        self.add_widget(self.button_layout)
+
+        # Button layout (more columns, dynamic height)
+        self.button_layout = GridLayout(
+            cols=3,
+            spacing=8,
+            size_hint_y=None  # let us set the height dynamically based on content
+        )
+        self.button_layout.bind(minimum_height=self.button_layout.setter('height'))
+
+        # ScrollView to make button layout scrollable if needed
+        self.button_scroll = ScrollView(
+            size_hint=(1, None),
+            height=150,  # Controls how much space the button area takes vertically
+            do_scroll_x=False
+        )
+        self.button_scroll.add_widget(self.button_layout)
+
+        # Content area (fills remaining space cleanly)
+        self.content_area = BoxLayout(
+            orientation='vertical',
+            size_hint=(1, 1)
+        )
+
+        # Assemble layout
+        self.add_widget(self.button_scroll)
         self.add_widget(self.content_area)
+
+        # State tracking
         self.current_button = None
         self.current_content = None
+
+        # Populate
         self.add_checklist_sections()
+
     def add_checklist_sections(self):
         sections = [
             ("Preflight", self.get_preflight_items()),
@@ -287,22 +312,29 @@ class ChecklistTab(BoxLayout):
             ("Securing", self.get_securing_items()),
             ("V-Speeds", self.get_vspeeds_items())
         ]
+
         for title, items in sections:
-            button = ChecklistButton(text=title)
+            button = ChecklistButton(text=title, size_hint_y=None, height=50)
             button.bind(on_press=lambda btn=button, t=title, i=items: self.on_section_selected(btn, t, i))
             self.button_layout.add_widget(button)
-        if sections:
-            first_button = self.button_layout.children[-1]
+
+        # Properly select the first button
+        if self.button_layout.children:
+            first_button = self.button_layout.children[-1]  # GridLayout stores in reverse
             self.on_section_selected(first_button, sections[0][0], sections[0][1])
+
     def on_section_selected(self, button, title, items):
         if self.current_button:
             self.current_button.is_selected = False
         button.is_selected = True
         self.current_button = button
+
         if self.current_content:
             self.content_area.remove_widget(self.current_content)
+
         self.current_content = ChecklistContent(title, items)
         self.content_area.add_widget(self.current_content)
+
     
     def get_preflight_items(self):
         """Get the preflight checklist items."""
