@@ -20,6 +20,7 @@ from kivy.uix.widget import Widget
 from kivy.properties import ListProperty, ObjectProperty, BooleanProperty
 from kivy.clock import Clock
 from functools import partial
+from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 # Set window properties for the Raspberry Pi
 from kivy.config import Config
@@ -587,135 +588,104 @@ class KneeboardApp(App):
     """Main application class for the pilot kneeboard."""
     
     def build(self):
-        """Build the application UI."""
-        # Main layout
+        # Main vertical layout
         self.main_layout = BoxLayout(orientation='vertical')
-        
-        # Header with title and clock
+
+        # Header (title + clock)
         self.header = BoxLayout(size_hint=(1, 0.1), padding=5)
         with self.header.canvas.before:
-            Color(0.2, 0.2, 0.2, 1)  # Dark background for header
+            Color(0.2, 0.2, 0.2, 1)
             self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
-        
-        # Bind position and size changes
         self.header.bind(pos=self._update_header_bg, size=self._update_header_bg)
-        
-        # Title label
         self.title_label = Label(
             text="Pilot Kneeboard",
             font_size=24,
             bold=True,
             size_hint=(0.7, 1),
-            color=(1, 1, 1, 1),  # White text for better contrast
+            color=(1, 1, 1, 1),
             markup=True
         )
-        self.header.add_widget(self.title_label)
-        
-        # Clock display
         self.clock_label = Label(
             text="00:00:00",
             font_size=24,
             size_hint=(0.3, 1),
-            color=(1, 1, 1, 1),  # White text for better contrast
+            color=(1, 1, 1, 1),
             markup=True
         )
+        self.header.add_widget(self.title_label)
         self.header.add_widget(self.clock_label)
-        
-        # Schedule clock updates
         Clock.schedule_interval(self.update_clock, 1)
-        
-        # Add header to main layout
         self.main_layout.add_widget(self.header)
-        
-        # Tabbed panel for different sections
-        self.tabs = TabbedPanel(
-            do_default_tab=False, 
-            size_hint=(1, 0.9), 
-            tab_height=50,
-            tab_width=150,
-            background_color=(0.15, 0.15, 0.15, 1),
-            tab_pos='top_mid'  # Ensure tabs are at the top
-        )
-        
-        # Custom style for tab items
-        tab_style = {
-            'font_size': 18,
-            'background_color': (0.3, 0.3, 0.3, 1),
-            'color': (1, 1, 1, 1),
-            'markup': True
-        }
-        
-        # Reference tab
-        self.reference_tab = TabbedPanelItem(text="Reference")
-        self.reference_tab.font_size = tab_style['font_size']
-        self.reference_tab.background_color = tab_style['background_color']
-        self.reference_tab.color = tab_style['color']
-        self.reference_content = PiperArcherReference()
-        self.reference_tab.add_widget(self.reference_content)
-        self.tabs.add_widget(self.reference_tab)
-        
-        # Notepad tab
-        self.notepad_tab = TabbedPanelItem(text="Notepad")
-        self.notepad_tab.font_size = tab_style['font_size']
-        self.notepad_tab.background_color = tab_style['background_color']
-        self.notepad_tab.color = tab_style['color']
-        self.notepad = NotepadTab()
-        self.notepad_tab.add_widget(self.notepad)
-        self.tabs.add_widget(self.notepad_tab)
-        
-        # Checklist tab
-        self.checklist_tab = TabbedPanelItem(text="Checklists")
-        self.checklist_tab.font_size = tab_style['font_size']
-        self.checklist_tab.background_color = tab_style['background_color']
-        self.checklist_tab.color = tab_style['color']
-        self.checklist_content = ChecklistTab()
-        self.checklist_tab.add_widget(self.checklist_content)
-        self.tabs.add_widget(self.checklist_tab)
-        
+
+        # Custom tab bar
+        self.tab_bar = BoxLayout(orientation='horizontal', size_hint=(1, 0.08), padding=2, spacing=2)
+        self.tabs = [
+            ("Reference", self.show_reference),
+            ("Notepad", self.show_notepad),
+            ("Checklists", self.show_checklists)
+        ]
+        self.tab_buttons = []
+        for tab_name, callback in self.tabs:
+            btn = Button(text=tab_name, font_size=18, background_color=(0.3, 0.3, 0.3, 1), color=(1, 1, 1, 1))
+            btn.bind(on_press=callback)
+            self.tab_bar.add_widget(btn)
+            self.tab_buttons.append(btn)
+        self.main_layout.add_widget(self.tab_bar)
+
+        # ScreenManager for tab content
+        self.screen_manager = ScreenManager(transition=NoTransition())
+        self.reference_screen = Screen(name="reference")
+        self.reference_screen.add_widget(PiperArcherReference())
+        self.notepad_screen = Screen(name="notepad")
+        self.notepad_screen.add_widget(NotepadTab())
+        self.checklists_screen = Screen(name="checklists")
+        self.checklists_screen.add_widget(ChecklistTab())
+        self.screen_manager.add_widget(self.reference_screen)
+        self.screen_manager.add_widget(self.notepad_screen)
+        self.screen_manager.add_widget(self.checklists_screen)
+        self.main_layout.add_widget(self.screen_manager)
+
         # Set default tab
-        self.tabs.default_tab = self.notepad_tab
-        
-        # Add tabs to main layout
-        self.main_layout.add_widget(self.tabs)
-        
-        # Force initial layout
-        self.main_layout.do_layout()
-        
+        self.select_tab(1)  # Notepad by default
         return self.main_layout
-    
+
+    def select_tab(self, idx):
+        # Update button appearance
+        for i, btn in enumerate(self.tab_buttons):
+            if i == idx:
+                btn.background_color = (0.2, 0.5, 1.0, 1)
+            else:
+                btn.background_color = (0.3, 0.3, 0.3, 1)
+        # Switch screen
+        if idx == 0:
+            self.screen_manager.current = "reference"
+        elif idx == 1:
+            self.screen_manager.current = "notepad"
+        elif idx == 2:
+            self.screen_manager.current = "checklists"
+
+    def show_reference(self, instance):
+        self.select_tab(0)
+    def show_notepad(self, instance):
+        self.select_tab(1)
+    def show_checklists(self, instance):
+        self.select_tab(2)
+
     def _update_header_bg(self, instance, value):
-        """Update the header background rectangle when the header size/position changes."""
         self.header_bg.pos = instance.pos
         self.header_bg.size = instance.size
-    
+
     def update_clock(self, dt):
-        """Update the clock display."""
         from datetime import datetime
         now = datetime.now()
         self.clock_label.text = now.strftime("%H:%M:%S")
-        
+
     def on_start(self):
-        """Called when the application starts."""
-        # Force redraw of all widgets to ensure proper display
         Clock.schedule_once(self._force_redraw, 0.1)
-    
     def _force_redraw(self, dt):
-        """Force a redraw of the application to ensure all elements are visible."""
-        # Trigger a layout update
         self.main_layout.do_layout()
-        
-        # Update header background
         self._update_header_bg(self.header, None)
-        
-        # Make sure the header is visible
         self.header.canvas.ask_update()
-        
-        # Make sure the tabs are properly displayed
-        self.tabs.canvas.ask_update()
-        for tab in self.tabs.tab_list:
-            tab.canvas.ask_update()
-        
-        # Force a redraw of all widgets
         Window.canvas.ask_update()
 
 
