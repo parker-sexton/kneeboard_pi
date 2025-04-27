@@ -267,32 +267,15 @@ class ChecklistTab(BoxLayout):
         self.orientation = 'vertical'
         self.spacing = 10
         self.padding = 10
-
         # Button layout (fixed height)
-        self.button_layout = GridLayout(
-            cols=2,
-            spacing=8,
-            size_hint_y=None,  # IMPORTANT: only fix height in Y axis
-            height=100
-        )
-
+        self.button_layout = GridLayout(cols=2, spacing=8, size_hint=(1, None), height=200)
         # Content area (fills remaining space)
-        self.content_area = BoxLayout(
-            orientation='vertical',
-            size_hint_y=1  # Fill remaining space vertically
-        )
-
-        # Add widgets
+        self.content_area = BoxLayout(orientation='vertical', size_hint=(1, 1))
         self.add_widget(self.button_layout)
         self.add_widget(self.content_area)
-
-        # Initialize state
         self.current_button = None
         self.current_content = None
-
-        # Populate buttons
         self.add_checklist_sections()
-
     def add_checklist_sections(self):
         sections = [
             ("Preflight", self.get_preflight_items()),
