@@ -538,12 +538,10 @@ class PiperArcherReference(ScrollView):
         ])
         
         self.add_section("Radio Frequencies", [
-            "Emergency: 121.5 MHz",
-            "ATIS: 108.0 - 117.95 MHz",
-            "Ground: 121.6 - 121.9 MHz",
-            "Tower: 118.0 - 121.3 MHz",
-            "Approach/Departure: 118.0 - 124.0 MHz",
-            "CTAF: 122.7, 122.8, 122.9, 123.0 MHz"
+            "ATIS: 123.8 MHz",
+            "Ground: 120.1 MHz",
+            "Tower: 127.45 MHz",
+            "Approach/Departure: S: 125.3 N: 132.35 MHz",
         ])
         
         self.add_widget(self.layout)
