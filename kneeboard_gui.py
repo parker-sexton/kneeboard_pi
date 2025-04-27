@@ -591,7 +591,7 @@ class KneeboardApp(App):
         # Main layout
         self.main_layout = BoxLayout(orientation='vertical')
         
-        # Header with title (smaller)
+        # Header with title and clock
         self.header = BoxLayout(size_hint=(1, 0.1), padding=5)
         with self.header.canvas.before:
             Color(0.2, 0.2, 0.2, 1)  # Dark background for header
@@ -600,7 +600,7 @@ class KneeboardApp(App):
         # Bind position and size changes
         self.header.bind(pos=self._update_header_bg, size=self._update_header_bg)
         
-        # Title label with improved visibility
+        # Title label
         self.title_label = Label(
             text="Pilot Kneeboard",
             font_size=24,
@@ -611,7 +611,7 @@ class KneeboardApp(App):
         )
         self.header.add_widget(self.title_label)
         
-        # Clock display with improved visibility
+        # Clock display
         self.clock_label = Label(
             text="00:00:00",
             font_size=24,
@@ -627,7 +627,7 @@ class KneeboardApp(App):
         # Add header to main layout
         self.main_layout.add_widget(self.header)
         
-        # Tabbed panel with improved visibility
+        # Tabbed panel for different sections
         self.tabs = TabbedPanel(
             do_default_tab=False, 
             size_hint=(1, 0.9), 
@@ -637,7 +637,7 @@ class KneeboardApp(App):
             tab_pos='top_mid'  # Ensure tabs are at the top
         )
         
-        # Custom style for tab items with improved visibility
+        # Custom style for tab items
         tab_style = {
             'font_size': 18,
             'background_color': (0.3, 0.3, 0.3, 1),
