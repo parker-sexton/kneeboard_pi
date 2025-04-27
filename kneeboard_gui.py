@@ -596,43 +596,53 @@ class KneeboardApp(App):
         with self.header.canvas.before:
             Color(0.2, 0.2, 0.2, 1)  # Dark background for header
             self.header_bg = Rectangle(pos=self.header.pos, size=self.header.size)
+        
+        # Bind position and size changes
         self.header.bind(pos=self._update_header_bg, size=self._update_header_bg)
         
+        # Title label with improved visibility
         self.title_label = Label(
             text="Pilot Kneeboard",
             font_size=24,
             bold=True,
             size_hint=(0.7, 1),
-            color=(1, 1, 1, 1)  # White text for better contrast
+            color=(1, 1, 1, 1),  # White text for better contrast
+            markup=True
         )
         self.header.add_widget(self.title_label)
         
-        # Add a clock display
+        # Clock display with improved visibility
         self.clock_label = Label(
             text="00:00:00",
             font_size=24,
             size_hint=(0.3, 1),
-            color=(1, 1, 1, 1)  # White text for better contrast
+            color=(1, 1, 1, 1),  # White text for better contrast
+            markup=True
         )
         self.header.add_widget(self.clock_label)
+        
+        # Schedule clock updates
         Clock.schedule_interval(self.update_clock, 1)
         
+        # Add header to main layout
         self.main_layout.add_widget(self.header)
         
-        # Tabbed panel for different sections with improved visibility for Raspberry Pi
+        # Tabbed panel with improved visibility
         self.tabs = TabbedPanel(
             do_default_tab=False, 
             size_hint=(1, 0.9), 
-            tab_height=50,  # Increased tab height for better touch targets
-            tab_width=150,   # Fixed tab width for better visibility
-            background_color=(0.15, 0.15, 0.15, 1)  # Darker background for better contrast
+            tab_height=50,
+            tab_width=150,
+            background_color=(0.15, 0.15, 0.15, 1),
+            tab_pos='top_mid'  # Ensure tabs are at the top
         )
         
-        # Custom style for tab items
+        # Custom style for tab items with improved visibility
         tab_style = {
             'font_size': 18,
             'background_color': (0.3, 0.3, 0.3, 1),
-            'color': (1, 1, 1, 1)
+            'color': (1, 1, 1, 1),
+            'markup': True
         }
         
         # Reference tab
@@ -665,7 +675,11 @@ class KneeboardApp(App):
         # Set default tab
         self.tabs.default_tab = self.notepad_tab
         
+        # Add tabs to main layout
         self.main_layout.add_widget(self.tabs)
+        
+        # Force initial layout
+        self.main_layout.do_layout()
         
         return self.main_layout
     
@@ -690,6 +704,9 @@ class KneeboardApp(App):
         # Trigger a layout update
         self.main_layout.do_layout()
         
+        # Update header background
+        self._update_header_bg(self.header, None)
+        
         # Make sure the header is visible
         self.header.canvas.ask_update()
         
@@ -697,6 +714,9 @@ class KneeboardApp(App):
         self.tabs.canvas.ask_update()
         for tab in self.tabs.tab_list:
             tab.canvas.ask_update()
+        
+        # Force a redraw of all widgets
+        Window.canvas.ask_update()
 
 
 if __name__ == "__main__":
